@@ -102,6 +102,7 @@ class Env:
     def __repr__(self): return "env:" + str(self.table)
 
     def delete(self, x): del self.table[x]
+
     def __str__(self): return "env:" + str(self.table)
 
     def dereference(self, t):
@@ -126,7 +127,7 @@ def _unify(x, x_env, y, y_env, trail, tmp_env):
            xp = x_env.get(x)
            if xp is None:
               y, y_env = y_env.dereference(y)
-              if not (x == y and x_env == y_env):
+              if x != y or x_env != y_env:
                   x_env.put(x, [y, y_env])
                   if x_env != tmp_env: trail.append([x, x_env])
               return True
