@@ -28,10 +28,7 @@ class Goal:
         return self.si([])
 
     def __lshift__(self, rhs): # <<
-        if type(rhs) is list:
-            self.si(rhs)
-        else:
-            self.si([rhs])
+        self.si(rhs if type(rhs) is list else [rhs])
 
     def calls(self, callback):
         self.pred.defs.append([self, callback])
@@ -44,15 +41,13 @@ class Cons:
     def __init__(self, car, cdr):
       self.car = car
       self.cdr = cdr
-      self.l = [self.car, self.cdr]
 
     def __str__(self):
        def lst_repr(x):
-          car, cdr = x.l
-          if cdr is None: return [str(car)]
-          elif type(cdr) is Cons:
-                  return [str(car)] + lst_repr(cdr)
-          else: return [str(car), '.', str(cdr)]
+          if x.cdr is None: return [str(x.car)]
+          elif type(x.cdr) is Cons:
+              return [str(x.car)] + lst_repr(x.cdr)
+          else: return [str(x.car), '.', str(x.cdr)]
        return '(' + ' '.join(lst_repr(self)) + ')'
 
     def __repr__(self): return str(self)
@@ -69,9 +64,7 @@ def is_(syms, blk):
     assert len(syms) > 0 # need at least one symbol needed
 
     def is_f(env):
-        lst =[]
-        for x in syms[1:]:
-           lst.append(env[x])
+        lst =[env[x] for x in syms[1:]]
         value = blk(*lst)
         return env.unify(syms[0], value)
 
@@ -163,7 +156,7 @@ def resolve(goals):
 def _resolve_body(body, env, cut):
     if body is None: yield None
     else:
-       goal, rest = body.l
+       goal, rest = body.car, body.cdr
        if goal == CUT:
           for _ in _resolve_body(rest, env, cut): yield None
           cut[0] = True
