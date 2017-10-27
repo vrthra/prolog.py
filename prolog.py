@@ -2,20 +2,14 @@
 import itertools
 
 class Pred:
-    def __init__(self, name):
-        self.name = name
-        self.defs = []
+    def __init__(self, name): self.name, self.defs = name, []
 
     def __str__(self): return self.name
 
     def __repr__(self): return str(self)
 
     def __getitem__(self, args): # []
-        if type(args) is tuple:
-            args = list(args)
-        else:
-            args = [args]
-        return Goal(self, args)
+        return Goal(self, list(args) if type(args) is tuple else [args])
 
 class Goal:
     def __init__(self, pred, args): self.pred, self.args = pred, args
@@ -33,22 +27,18 @@ class Goal:
     def __repr__(self): return str(self)
 
 class Cons:
-    def __init__(self, car, cdr):
-      self.car = car
-      self.cdr = cdr
+    def __init__(self, car, cdr): self.car, self.cdr = car, cdr
 
     def __str__(self):
        def lst_repr(x):
           if x.cdr is None: return [str(x.car)]
-          elif type(x.cdr) is Cons:
-              return [str(x.car)] + lst_repr(x.cdr)
+          elif type(x.cdr) is Cons: return [str(x.car)] + lst_repr(x.cdr)
           else: return [str(x.car), '.', str(x.cdr)]
        return '(' + ' '.join(lst_repr(self)) + ')'
 
     def __repr__(self): return str(self)
 
-def counter():
-    for i in itertools.count(): yield i
+def counter(): yield from itertools.count()
 
 global is_cnt
 is_cnt = counter()
@@ -56,20 +46,16 @@ is_cnt = counter()
 def is_(syms, blk):
     global is_cnt
     is_p = Pred('is_%d' % next(is_cnt))
-    assert len(syms) > 0 # need at least one symbol needed
 
     def is_f(env):
-        lst =[env[x] for x in syms[1:]]
-        value = blk(*lst)
-        return env.unify(syms[0], value)
+        lst = [env[x] for x in syms[1:]]
+        return env.unify(syms[0], blk(*lst))
 
     is_p[syms].calls(is_f)
     return is_p[syms]
 
-def to_list(x):
-    y = None
-    for e in reversed(x):
-        y = Cons(e, y)
+def to_list(x, y=None):
+    for e in reversed(x): y = Cons(e, y)
     return y
 
 class Symbol:
@@ -80,7 +66,6 @@ class Symbol:
     def __repr__(self): return str(self)
 
 CUT = Symbol('CUT')
-
 
 class Env:
     def __init__(self): self.table = {}
@@ -109,11 +94,11 @@ class Env:
         t, env = self.dereference(t)
         tt = type(t)
         if tt is Goal: return Goal(t.pred, env[t.args])
-        if tt is Cons: return cons(env[t.car], env[t.cdr])
+        if tt is Cons: return Cons(env[t.car], env[t.cdr])
         if tt is list: return [env[e] for e in t]
         return t
 
-def _unify(x, x_env, y, y_env, trail, tmp_env):
+def unify(x, x_env, y, y_env, trail, tmp_env):
     while True:
         if type(x) is Symbol:
            xp = x_env.get(x)
@@ -126,8 +111,7 @@ def _unify(x, x_env, y, y_env, trail, tmp_env):
            else:
               x, x_env = xp
               x, x_env = x_env.dereference(x)
-        elif type(y) is Symbol:
-            x, x_env, y, y_env = y, y_env, x, x_env
+        elif type(y) is Symbol: x, x_env, y, y_env = y, y_env, x, x_env
         else: break
     if type(x) is Goal and type(y) is Goal:
        if x.pred != y.pred: return False
@@ -135,56 +119,42 @@ def _unify(x, x_env, y, y_env, trail, tmp_env):
     if type(x) is list and type(y) is list:
        if len(x) != len(y): return False
 
-       for i,v in enumerate(x):
-          if not(_unify(x[i], x_env, y[i], y_env, trail, tmp_env)): return False
-       return True
-    else:
-       return x == y
+       return all(unify(a, x_env, b, y_env, trail, tmp_env) for a,b in zip(x,y))
+    return x == y
 
 def resolve(goals):
+    def _resolve_body(body, env, cut):
+        if body is None: yield None # yield when ever no more goals remain
+        else:
+           goal, rest = body.car, body.cdr
+           if goal == CUT:
+              yield from _resolve_body(rest, env, cut)
+              cut[0] = True
+           else:
+              d_env, d_cut = Env(), [False]
+              for d_head, d_body in goal.pred.defs:
+                 if d_cut[0] or cut[0]: break
+                 trail = []
+                 if unify(goal, env, d_head, d_env, trail, d_env):
+                    if callable(d_body):
+                        if d_body(CallbackEnv(d_env, trail)):
+                            yield from _resolve_body(rest, env, cut)
+                    else:
+                       for _i in _resolve_body(d_body, d_env, d_cut):
+                           yield from _resolve_body(rest, env, cut)
+                           if d_cut[0] is None: d_cut[0] = cut[0]
+                 for x, x_env in trail: x_env.delete(x)
+                 d_env.clear()
     env = Env()
     for _ in _resolve_body(to_list(goals), env, [False]): # not an error.
         yield env
-
-def _resolve_body(body, env, cut):
-    if body is None: yield None
-    else:
-       goal, rest = body.car, body.cdr
-       if goal == CUT:
-          for _ in _resolve_body(rest, env, cut): yield None
-          cut[0] = True
-       else:
-          d_env = Env()
-          d_cut = [False]
-          for d_head, d_body in goal.pred.defs:
-             if d_cut[0] or cut[0]: break
-             trail = []
-             if _unify(goal, env, d_head, d_env, trail, d_env):
-                if callable(d_body):
-                    if d_body(CallbackEnv(d_env, trail)):
-                        for _ in _resolve_body(rest, env, cut):
-                           yield None
-                else:
-                   for _i in _resolve_body(d_body, d_env, d_cut):
-                       for _j in _resolve_body(rest, env, cut):
-                           yield None
-                       if d_cut[0] is None: d_cut[0] = cut[0]
-             for x, x_env in trail:
-                 x_env.delete(x)
-             d_env.clear()
-
-global d_trace
-d_trace = False
-def trace(flag):
-    global d_trace
-    d_trace = flag
 
 class CallbackEnv:
     def __init__(self, env, trail): self.env, self.trail = env, trail
 
     def __getitem__(self, t): return self.env[t]
 
-    def unify(self, t, u): return _unify(t, self.env, u, self.env, self.trail, self.env)
+    def unify(self, t, u): return unify(t, self.env, u, self.env, self.trail, self.env)
 
 def query(*goals):
    goals = list(goals)
