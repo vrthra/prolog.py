@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from prolog import *
 
 X = Symbol('X')
@@ -32,6 +34,8 @@ father["matz", "Ruby"].fact()
 mother["Trude", "Sally"].fact()
 father["Tom", "Sally"].fact()
 father["Tom", "Erica"].fact()
+father["Tom", "Mini"].fact()
+mother["Trude", "Mini"].fact()
 father["Mike", "Tom"].fact()
 
 parent[X,Y] << father[X,Y]
@@ -39,7 +43,7 @@ parent[X,Y] << mother[X,Y]
 sibling[X,Y] << [ parent[Z,X], parent[Z,Y], noteq[X,Y] ]
 
 
-# print(query(sibling[X, "Sally"]))
+print(query(sibling[X, "Sally"]))
 
 move = Pred('move')
 write_info = Pred('write_info')
