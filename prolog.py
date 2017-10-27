@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import itertools
 
 class Pred:
     def __init__(self, _name):
@@ -10,7 +11,10 @@ class Pred:
     def __repr__(self): return str(self)
 
     def __getitem__(self, args): # []
-        args = list(args)
+        if type(args) is tuple:
+            args = list(args)
+        else:
+            args = [args]
         return Goal(self, args)
 
 class Goal:
@@ -32,8 +36,8 @@ class Goal:
     def calls(self, callback):
         self.pred.defs.append([self, callback])
 
-    def __str__(self):
-        return "%s%s" % (str(self.pred), str(self.args))
+    def __str__(self): return "%s%s" % (str(self.pred), str(self.args))
+
     def __repr__(self): return str(self)
 
 class Cons:
@@ -50,7 +54,29 @@ class Cons:
                   return [str(car)] + lst_repr(cdr)
           else: return [str(car), '.', str(cdr)]
        return '(' + ' '.join(lst_repr(self)) + ')'
+
     def __repr__(self): return str(self)
+
+def counter():
+    for i in itertools.count(): yield i
+
+global is_cnt
+is_cnt = counter()
+
+def is_(syms, blk):
+    global is_cnt
+    is_p = Pred('is_%d' % next(is_cnt))
+    assert len(syms) > 0 # need at least one symbol needed
+
+    def is_f(env):
+        lst =[]
+        for x in syms[1:]:
+           lst.append(env[x])
+        value = blk(*lst)
+        return env.unify(syms[0], value)
+
+    is_p[syms].calls(is_f)
+    return is_p[syms]
 
 def to_list(x):
     y = None
@@ -79,6 +105,7 @@ class Env:
     def get(self, x): return self.table.get(x)
 
     def clear(self): self.table = {}
+
     def __repr__(self): return "env:" + str(self.table)
 
     def delete(self, x): del self.table[x]
@@ -179,17 +206,14 @@ class CallbackEnv:
        self.env, self.trail = env, trail
     def __getitem__(self, t):
        return self.env[t]
-    def unify(t, u):
-       return _unify(t, self.env, u, self,env, self.trail, self.env)
+    def unify(self, t, u):
+       return _unify(t, self.env, u, self.env, self.trail, self.env)
 
 def query(*goals):
    goals = list(goals)
-   count = 0
-   def printout(x):
-       if len(x) == 1: x = x[0]
-       print("%d %s" % (count, str(x)))
+   results =[]
    for env in resolve(goals):
-       count += 1
-       printout(env[goals])
+       results.append(env[goals])
 
-   if count == 0: printout(goals)
+   return results
+
