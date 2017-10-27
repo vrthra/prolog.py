@@ -2,8 +2,8 @@
 import itertools
 
 class Pred:
-    def __init__(self, _name):
-        self.name = _name
+    def __init__(self, name):
+        self.name = name
         self.defs = []
 
     def __str__(self): return self.name
@@ -18,20 +18,15 @@ class Pred:
         return Goal(self, args)
 
 class Goal:
-    def __init__(self, pred, args):
-        self.pred, self.args = pred, args
+    def __init__(self, pred, args): self.pred, self.args = pred, args
 
-    def si(self, rhs):
-        self.pred.defs.append([self, to_list(rhs)])
+    def si(self, rhs): self.pred.defs.append([self, to_list(rhs)])
 
-    def fact(self):
-        return self.si([])
+    def fact(self): return self.si([])
 
-    def __lshift__(self, rhs): # <<
-        self.si(rhs if type(rhs) is list else [rhs])
+    def __lshift__(self, rhs): self.si(rhs if type(rhs) is list else [rhs])
 
-    def calls(self, callback):
-        self.pred.defs.append([self, callback])
+    def calls(self, callback): self.pred.defs.append([self, callback])
 
     def __str__(self): return "%s%s" % (str(self.pred), str(self.args))
 
@@ -74,11 +69,8 @@ def is_(syms, blk):
 def to_list(x):
     y = None
     for e in reversed(x):
-        y = cons(e, y)
+        y = Cons(e, y)
     return y
-
-def cons(car, cdr):
-    return Cons(car, cdr)
 
 class Symbol:
     def __init__(self, name): self.name = name
@@ -167,7 +159,7 @@ def _resolve_body(body, env, cut):
           for d_head, d_body in goal.pred.defs:
              if d_cut[0] or cut[0]: break
              trail = []
-             if _unify_(goal, env, d_head, d_env, trail, d_env):
+             if _unify(goal, env, d_head, d_env, trail, d_env):
                 if callable(d_body):
                     if d_body(CallbackEnv(d_env, trail)):
                         for _ in _resolve_body(rest, env, cut):
@@ -187,27 +179,14 @@ def trace(flag):
     global d_trace
     d_trace = flag
 
-def _unify_(x, x_env, y, y_env, trail, tmp_env):
-    global d_trace
-    if d_trace: lhs, rhs = str(x_env[x]), str(y)
-    unified = _unify(x, x_env, y, y_env, trail, tmp_env)
-    if d_trace:
-        print("\t%s %s %s" % (lhs, ('~' if unified else '!~'), rhs))
-    return unified
-
 class CallbackEnv:
-    def __init__(self, env, trail):
-       self.env, self.trail = env, trail
-    def __getitem__(self, t):
-       return self.env[t]
-    def unify(self, t, u):
-       return _unify(t, self.env, u, self.env, self.trail, self.env)
+    def __init__(self, env, trail): self.env, self.trail = env, trail
+
+    def __getitem__(self, t): return self.env[t]
+
+    def unify(self, t, u): return _unify(t, self.env, u, self.env, self.trail, self.env)
 
 def query(*goals):
    goals = list(goals)
-   results =[]
-   for env in resolve(goals):
-       results.append(env[goals])
-
-   return results
+   return [env[goals] for env in resolve(goals)]
 
