@@ -88,14 +88,14 @@ def procFile (f, prompt) :
 # and which we will unify back to when this Goal is complete.
 #
 
-def unify (srcTerm, srcEnv, destTerm, destEnv) :
+def unify (src, srcEnv, dest, destEnv) :
     "update dest env from src. return true if unification succeeds"
-    nargs = len(srcTerm.args)
-    if nargs        != len(destTerm.args) : return 0
-    if srcTerm.pred != destTerm.pred      : return 0
+    nargs = len(src.args)
+    if nargs        != len(dest.args) : return 0
+    if src.pred != dest.pred      : return 0
     for i in range(nargs) :
-        srcArg  = srcTerm.args[i]
-        destArg = destTerm.args[i]
+        srcArg  = src.args[i]
+        destArg = dest.args[i]
         if srcArg <= 'Z' : srcVal = srcEnv.get(srcArg)
         else             : srcVal = srcArg
         if srcVal :    # constant or defined Variable in source
