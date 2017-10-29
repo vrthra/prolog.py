@@ -112,10 +112,10 @@ def search (term) :
     if trace : print "search", term
     goal = Goal(Rule("got(goal):-x(y)"))      # Anything- just get a rule object
     goal.rule.goals = [term]                  # target is the single goal
-    if trace : print "stack", goal
-    stack = [goal]                            # Start our search
-    while stack :
-        c = stack.pop()        # Next goal to consider
+    if trace : print "queue", goal
+    queue = [goal]                            # Start our search
+    while queue :
+        c = queue.pop()        # Next goal to consider
         if trace : print "  pop", c
         if c.inx >= len(c.rule.goals) :       # Is this one finished?
             if c.parent == None :             # Yes. Our original goal?
@@ -126,8 +126,8 @@ def search (term) :
             unify (c.rule.head,                  c.env,
                    parent.rule.goals[parent.inx],parent.env)
             parent.inx = parent.inx+1         # advance to next goal in body
-            if trace : print "stack", parent
-            stack.append(parent)              # let it wait its turn
+            if trace : print "Queue", parent
+            queue.insert(0,parent)              # let it wait its turn
             continue
 
         # No. more to do with this goal.
@@ -137,8 +137,8 @@ def search (term) :
             if len(rule.head.args) != len(term.args) : continue
             child = Goal(rule, c)               # A possible subgoal
             ans = unify (term, c.env, rule.head, child.env)
-            if ans :                            # if unifies, stack it up
-                if trace : print "stack", child
-                stack.append(child)
+            if ans :                            # if unifies, queue it up
+                queue.insert(0,child)
+                if trace : print "queue", child
 
 if __name__ == "__main__" : main ()
