@@ -16,7 +16,7 @@ class Goal:
     def __init__(self, pred, args): self.pred, self.args = pred, args
 
     def __lshift__(self, rhs):
-        self.pred.defs.append([self, rhs])
+        self.pred.defs.append([self, to_list(rhs)])
 
     def __str__(self): return "%s%s" % (str(self.pred), str(self.args))
 
@@ -125,8 +125,8 @@ def resolve(goals):
            for d_head, d_body in goal.pred.defs:
               d_env, trail = Env(), []
               if unify(goal, env, d_head, d_env, trail, d_env):
-                 if len(d_body) == 1 and callable(d_body[0]):
-                     if d_body[0](CallbackEnv(d_env, trail)):
+                 if d_body and callable(d_body.car):
+                     if d_body.car(CallbackEnv(d_env, trail)):
                          yield from _resolve_body(rest, env)
                  else:
                     for _i in _resolve_body(d_body, d_env):
