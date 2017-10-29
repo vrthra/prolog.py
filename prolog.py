@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 #
-#   p r o l o g 2 . p y
+#   p r o l o g 3 . p y
 #
 import sys, copy, re
+
 rules     = []
 trace     = 0
 goalId    = 100
@@ -16,12 +17,13 @@ def fatal (mesg) :
 def split (l, sep, All=1) :
     "Split l by sep but honoring () and []"
     nest = 0
+    lsep = len(sep)
     if l == "" : return []
     for i in range(len(l)) :
         c = l[i]
-        if nest <= 0 and c == sep :
-            if All : return [l[:i]]+split(l[i+1:],sep)
-            else   : return [l[:i],l[i+1:]]
+        if nest <= 0 and l[i:i+lsep] == sep :
+            if All : return [l[:i]]+split(l[i+lsep:],sep)
+            else   : return [l[:i],l[i+lsep:]]
         if c in ['[','('] : nest = nest+1
         if c in [']',')'] : nest = nest-1
     return [l]
@@ -29,11 +31,22 @@ def split (l, sep, All=1) :
 def isVariable(term) : return term.args == [] and     term.pred[0:1] in uppercase
 def isConstant(term) : return term.args == [] and not term.pred[0:1] in uppercase
 
+infixOps = ("*is*","==","<",">","+","-","*","/")
+def splitInfix(s) :
+    for op in infixOps :
+        p = split(s,op,All=0)
+        if len(p) > 1 : return (op,p)
+    return None
+
 class Term :
     def __init__ (self, s, args=None) :
+        if not args : parts = splitInfix(s)
         if args :            # Predicate and args seperately
             self.pred = s
             self.args = args
+        elif parts :
+            self.args = map(Term,parts[1])
+            self.pred = parts[0]
         elif s[-1] == ']' :  # Build list "term"
             flds = split(s[1:-1],",")
             fld2 = split(s[1:-1],"|")
@@ -69,12 +82,12 @@ class Term :
         else : return self.pred
 
 class Rule :
-    def __init__ (self, s) :   # expect "term:-term;term;..."
+    def __init__ (self, s) :   # expect "term:-term,term,..."
         flds = s.split(":-")
         self.head = Term(flds[0])
         self.goals = []
         if len(flds) == 2 :
-            flds = split(re.sub("\),",");",flds[1]),";")
+            flds = split(flds[1],",")
             for fld in flds : self.goals.append(Term(fld))
 
     def __repr__ (self) :
@@ -114,7 +127,8 @@ def procFile (f, prompt) :
         sent = f.readline()
         if sent == "" : break
         s = re.sub("#.*","",sent[:-1])   # clip comments and newline
-        s = re.sub(" ", "",s)           # remove spaces
+        s = re.sub(" is ","*is*",s)      # protect "is" operator
+        s = re.sub(" ", "",s)          # remove spaces
         if s == "" : continue
 
         if s[-1] in '?.' : punc=s[-1]; s=s[:-1]
@@ -170,12 +184,10 @@ def sts(ok, why) :
     return ok
 
 def search (term) :
-    global goalId
-    goalId = 0
-    if trace : print "search", term
-    goal = Goal(Rule("got(goal):-x(y)"))      # Anything- just get a rule object
+    global trace
+    # pop will take item from end, insert(0,val) will push item onto queue
+    goal = Goal(Rule("all(done):-x(y)"))      # Anything- just get a rule object
     goal.rule.goals = [term]                  # target is the single goal
-    if trace : print "queue", goal
     queue = [goal]                            # Start our search
     while queue :
         c = queue.pop()        # Next goal to consider
@@ -195,7 +207,24 @@ def search (term) :
 
         # No. more to do with this goal.
         term = c.rule.goals[c.inx]            # What we want to solve
-        for rule in rules :                     # Walk down the rule database
+
+        pred = term.pred                    # Special term?
+        if pred in ['*is*', 'cut','fail','<','=='] :
+            if pred == '*is*' :
+                ques = eval(term.args[0],c.env)
+                ans  = eval(term.args[1],c.env)
+                if ques == None :
+                    c.env[term.args[0].pred] = ans  # Set variable
+                elif ques.pred != ans.pred :
+                    continue                # Mismatch, fail
+            elif pred == 'cut' : queue = [] # Zap the competition
+            elif pred == 'fail': continue   # Dont succeed
+            elif not eval(term,c.env) : continue # Fail if not true
+            c.inx = c.inx + 1               # Succeed. resume self.
+            queue.insert(0,c)
+            continue
+
+        for rule in rules :                   # Not special. Walk rule database
             if rule.head.pred      != term.pred      : continue
             if len(rule.head.args) != len(term.args) : continue
             child = Goal(rule, c)               # A possible subgoal
@@ -203,7 +232,19 @@ def search (term) :
             if ans :                            # if unifies, queue it up
                 queue.insert(0,child)
                 if trace : print "queue", child
+
+def add (a,b) : return Term(str(int(a.pred)+int(b.pred)),[])
+def sub (a,b) : return Term(str(int(a.pred)-int(b.pred)),[])
+def mul (a,b) : return Term(str(int(a.pred)*int(b.pred)),[])
+def lt  (a,b) : return int(a.pred) <  int(b.pred)
+def eq  (a,b) : return int(a.pred) == int(b.pred)
+
+operators = {'+': add, '-':sub, '*':mul, '<':lt}
+
 def eval (term, env) :      # eval all variables within a term to constants
+    special = operators.get(term.pred)
+    if special :
+        return special(eval(term.args[0],env),eval(term.args[1],env))
     if isConstant(term) : return term
     if isVariable(term) :
         ans = env.get(term.pred)
