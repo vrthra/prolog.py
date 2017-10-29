@@ -8,15 +8,13 @@ class Pred:
 
     def __repr__(self): return str(self)
 
-    def __getitem__(self, args): # []
+    def __call__(self, *args): # []
         return Goal(self, list(args) if type(args) is tuple else [args])
 
 class Goal:
     def __init__(self, pred, args): self.pred, self.args = pred, args
 
     def si(self, rhs): self.pred.defs.append([self, to_list(rhs)])
-
-    def fact(self): return self.si([])
 
     def __lshift__(self, rhs): self.si(rhs if type(rhs) is list else [rhs])
 
@@ -51,8 +49,8 @@ def is_(syms, blk):
         lst = [env[x] for x in syms[1:]]
         return env.unify(syms[0], blk(*lst))
 
-    is_p[syms].calls(is_f)
-    return is_p[syms]
+    is_p(syms).calls(is_f)
+    return is_p(syms)
 
 def to_list(x, y=None):
     for e in reversed(x): y = Cons(e, y)
@@ -64,8 +62,6 @@ class Symbol:
     def __str__(self): return '$' + self.name
 
     def __repr__(self): return str(self)
-
-CUT = Symbol('CUT')
 
 class Env:
     def __init__(self): self.table = {}
@@ -123,30 +119,24 @@ def unify(x, x_env, y, y_env, trail, tmp_env):
     return x == y
 
 def resolve(goals):
-    def _resolve_body(body, env, cut):
+    def _resolve_body(body, env):
         if body is None: yield None # yield when ever no more goals remain
         else:
            goal, rest = body.car, body.cdr
-           if goal == CUT:
-              yield from _resolve_body(rest, env, cut)
-              cut[0] = True
-           else:
-              d_env, d_cut = Env(), [False]
-              for d_head, d_body in goal.pred.defs:
-                 if d_cut[0] or cut[0]: break
-                 trail = []
-                 if unify(goal, env, d_head, d_env, trail, d_env):
-                    if callable(d_body):
-                        if d_body(CallbackEnv(d_env, trail)):
-                            yield from _resolve_body(rest, env, cut)
-                    else:
-                       for _i in _resolve_body(d_body, d_env, d_cut):
-                           yield from _resolve_body(rest, env, cut)
-                           if d_cut[0] is None: d_cut[0] = cut[0]
-                 for x, x_env in trail: x_env.delete(x)
-                 d_env.clear()
+           d_env = Env()
+           for d_head, d_body in goal.pred.defs:
+              trail = []
+              if unify(goal, env, d_head, d_env, trail, d_env):
+                 if callable(d_body):
+                     if d_body(CallbackEnv(d_env, trail)):
+                         yield from _resolve_body(rest, env)
+                 else:
+                    for _i in _resolve_body(d_body, d_env):
+                        yield from _resolve_body(rest, env)
+              for x, x_env in trail: x_env.delete(x)
+              d_env.clear()
     env = Env()
-    for _ in _resolve_body(to_list(goals), env, [False]): # not an error.
+    for _ in _resolve_body(to_list(goals), env): # not an error.
         yield env
 
 class CallbackEnv:
