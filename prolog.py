@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import itertools
+import inspect
 
 class Pred:
     def __init__(self, name): self.name, self.defs = name, []
@@ -14,11 +15,8 @@ class Pred:
 class Goal:
     def __init__(self, pred, args): self.pred, self.args = pred, args
 
-    def si(self, rhs): self.pred.defs.append([self, to_list(rhs)])
-
-    def __lshift__(self, rhs): self.si(rhs if type(rhs) is list else [rhs])
-
-    def calls(self, callback): self.pred.defs.append([self, callback])
+    def __lshift__(self, rhs):
+        self.pred.defs.append([self, rhs])
 
     def __str__(self): return "%s%s" % (str(self.pred), str(self.args))
 
@@ -49,7 +47,7 @@ def is_(syms, blk):
         lst = [env[x] for x in syms[1:]]
         return env.unify(syms[0], blk(*lst))
 
-    is_p(syms).calls(is_f)
+    is_p(syms) << [is_f]
     return is_p(syms)
 
 def to_list(x, y=None):
@@ -125,10 +123,10 @@ def resolve(goals):
            goal, rest = body.car, body.cdr
            d_env = Env()
            for d_head, d_body in goal.pred.defs:
-              trail = []
+              d_env, trail = Env(), []
               if unify(goal, env, d_head, d_env, trail, d_env):
-                 if callable(d_body):
-                     if d_body(CallbackEnv(d_env, trail)):
+                 if len(d_body) == 1 and callable(d_body[0]):
+                     if d_body[0](CallbackEnv(d_env, trail)):
                          yield from _resolve_body(rest, env)
                  else:
                     for _i in _resolve_body(d_body, d_env):
@@ -150,3 +148,7 @@ def query(*goals):
    goals = list(goals)
    return [env[goals] for env in resolve(goals)]
 
+def symbols(symbols):
+    for s in symbols: inspect.currentframe().f_back.f_globals[s] = Symbol(s)
+def predicates(predicates):
+    for s in predicates: inspect.currentframe().f_back.f_globals[s] = Pred(s)

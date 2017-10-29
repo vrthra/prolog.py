@@ -2,29 +2,19 @@
 
 from prolog import *
 
-X = Symbol('X')
-Y = Symbol('Y')
-Z = Symbol('Z')
+symbols([chr(x) for x in range(ord('A'),ord('Z')+1)])
+predicates(['eq', 'noteq', 'gt', 'write', 'writenl', 'nl'])
 
-eq = Pred('eq')
-eq(X, Y).calls(lambda env: env.unify(env[X], env[Y]))
-noteq = Pred('noteq')
-noteq(X, Y).calls(lambda env: env[X] != env[Y])
-gt = Pred('gt')
-gt(X, Y).calls(lambda env: env[X] > env[Y])
+eq(X, Y) << [lambda env: env.unify(env[X], env[Y])]
+noteq(X, Y) << [lambda env: env[X] != env[Y]]
+gt(X, Y) << [lambda env: env[X] > env[Y]]
 
-write = Pred('write')
-write(X).calls(lambda env: (print(env[X], end=''),))
-writenl = Pred('writenl')
-writenl(X).calls(lambda env: (print(env[X]),))
-nl = Pred('nl')
-nl().calls(lambda env: (print(),))
+write(X) << [lambda env: (print(env[X], end=''),)]
+writenl(X) << [lambda env: (print(env[X]),)]
+nl() << [lambda env: (print(),)]
 
 
-father = Pred('father')
-mother = Pred('mother')
-parent = Pred('parent')
-sibling = Pred('sibling')
+predicates(['father', 'mother', 'parent', 'sibling', 'mov', 'move', 'write_info'])
 
 father("matz", "Ruby") << []
 mother("Trude", "Sally") << []
@@ -34,22 +24,12 @@ father("Tom", "Mini") << []
 mother("Trude", "Mini") << []
 father("Mike", "Tom") << []
 
-parent(X,Y) << father(X,Y)
-parent(X,Y) << mother(X,Y)
-sibling(X,Y) << [ parent(Z,X), parent(Z,Y), noteq(X,Y) ]
+parent(X,Y) << [father(X,Y)]
+parent(X,Y) << [mother(X,Y)]
+sibling(X,Y) << [parent(Z,X), parent(Z,Y), noteq(X,Y)]
 
 
 print(query(sibling(X, "Sally")))
-
-move = Pred('move')
-mov = Pred('mov')
-write_info = Pred('write_info')
-
-M = Symbol('M')
-N = Symbol('N')
-A = Symbol('A')
-B = Symbol('B')
-C = Symbol('C')
 
 print("no cut.")
 
