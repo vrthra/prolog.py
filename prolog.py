@@ -1,26 +1,72 @@
 #!/usr/bin/env python
 #
-#   p r o l o g 1 . p y
+#   p r o l o g 2 . p y
 #
 import sys, copy, re
 rules     = []
 trace     = 0
 goalId    = 100
+indent    = ""
+uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 def fatal (mesg) :
     sys.stdout.write ("Fatal: %s\n" % mesg)
     sys.exit(1)
 
+def split (l, sep, All=1) :
+    "Split l by sep but honoring () and []"
+    nest = 0
+    if l == "" : return []
+    for i in range(len(l)) :
+        c = l[i]
+        if nest <= 0 and c == sep :
+            if All : return [l[:i]]+split(l[i+1:],sep)
+            else   : return [l[:i],l[i+1:]]
+        if c in ['[','('] : nest = nest+1
+        if c in [']',')'] : nest = nest-1
+    return [l]
+
+def isVariable(term) : return term.args == [] and     term.pred[0:1] in uppercase
+def isConstant(term) : return term.args == [] and not term.pred[0:1] in uppercase
+
 class Term :
-    def __init__ (self, s) :   # expect "x(y,z...)"
-        if s[-1] != ')' : fatal("Syntax error in term: %s" % [s])
-        flds = s.split('(')
-        if len(flds) != 2 : fatal("Syntax error in term: %s" % [s])
-        self.args = flds[1][:-1].split(',')
-        self.pred = flds[0]
+    def __init__ (self, s, args=None) :
+        if args :            # Predicate and args seperately
+            self.pred = s
+            self.args = args
+        elif s[-1] == ']' :  # Build list "term"
+            flds = split(s[1:-1],",")
+            fld2 = split(s[1:-1],"|")
+            if len(fld2) > 1 :
+                self.args = map(Term,fld2)
+                self.pred = '.'
+            else :
+                flds.reverse()
+                l = Term('.',[])
+                for fld in flds : l = Term('.',[Term(fld),l])
+                self.pred = l.pred; self.args = l.args
+        elif s[-1] == ')' :               # Compile from "pred(a,b,c)" string
+            flds = split(s,'(',All=0)
+            if len(flds) != 2 : fatal("Syntax error in term: %s" % [s])
+            self.args = map(Term,split(flds[1][:-1],','))
+            self.pred = flds[0]
+        else :
+            self.pred = s           # Simple constant or variable
+            self.args = []
 
     def __repr__ (self) :
-        return "%s(%s)" % (self.pred,",".join(self.args))
+        if self.pred == '.' :
+            if len(self.args) == 0 : return "[]"
+            nxt = self.args[1]
+            if nxt.pred == '.' and nxt.args == [] :
+                return "[%s]" % str(self.args[0])
+            elif nxt.pred == '.' :
+                return "[%s,%s]" % (str(self.args[0]),str(self.args[1])[1:-1])
+            else :
+                return "[%s|%s]" % (str(self.args[0]),str(self.args[1]))
+        elif self.args :
+            return "%s(%s)" % (self.pred, ",".join(map(str,self.args)))
+        else : return self.pred
 
 class Rule :
     def __init__ (self, s) :   # expect "term:-term;term;..."
@@ -28,7 +74,7 @@ class Rule :
         self.head = Term(flds[0])
         self.goals = []
         if len(flds) == 2 :
-            flds = re.sub("\),",");",flds[1]).split(";")
+            flds = split(re.sub("\),",");",flds[1]),";")
             for fld in flds : self.goals.append(Term(fld))
 
     def __repr__ (self) :
@@ -90,21 +136,38 @@ def procFile (f, prompt) :
 
 def unify (src, srcEnv, dest, destEnv) :
     "update dest env from src. return true if unification succeeds"
-    nargs = len(src.args)
-    if nargs        != len(dest.args) : return 0
-    if src.pred != dest.pred      : return 0
-    for i in range(nargs) :
-        srcArg  = src.args[i]
-        destArg = dest.args[i]
-        if srcArg <= 'Z' : srcVal = srcEnv.get(srcArg)
-        else             : srcVal = srcArg
-        if srcVal :    # constant or defined Variable in source
-            if destArg <= 'Z' :  # Variable in destination
-                destVal = destEnv.get(destArg)
-                if not destVal : destEnv[destArg] = srcVal  # Unify !
-                elif destVal != srcVal : return 0           # Won't unify
-            elif     destArg != srcVal : return 0           # Won't unify
-    return 1
+    global trace, indent
+    if trace : print indent, "Unify", src, srcEnv, "to", dest, destEnv
+    indent = indent+"  "
+    if src.pred == '_' or dest.pred == '_' : return sts(1,"Wildcard")
+
+    if isVariable(src) :
+        srcVal = eval(src, srcEnv)
+        if not srcVal : return sts(1,"Src unset")
+        else : return sts(unify(srcVal,srcEnv,dest,destEnv), "Unify to Src Value")
+
+    if isVariable(dest) :
+        destVal = eval(dest, destEnv)           # evaluate destination
+        if destVal : return sts(unify(src,srcEnv,destVal,destEnv),"Unify to Dest value")
+        else :
+            destEnv[dest.pred] = eval(src,srcEnv)
+            return sts(1,"Dest updated 1")      # unifies. destination updated
+
+    elif src.pred      != dest.pred      : return sts(0,"Diff predicates")
+    elif len(src.args) != len(dest.args) : return sts(0,"Diff # args")
+    else :
+        dde = copy.deepcopy(destEnv)
+        for i in range(len(src.args)) :
+            if not unify(src.args[i],srcEnv,dest.args[i],dde) :
+                return sts(0,"Arg doesn't unify")
+        destEnv.update(dde)
+        return sts(1,"All args unify")
+
+def sts(ok, why) :
+    global trace, indent
+    indent = indent[:-2]
+    if trace: print indent, ["No","Yes"][ok], why
+    return ok
 
 def search (term) :
     global goalId
@@ -140,5 +203,17 @@ def search (term) :
             if ans :                            # if unifies, queue it up
                 queue.insert(0,child)
                 if trace : print "queue", child
+def eval (term, env) :      # eval all variables within a term to constants
+    if isConstant(term) : return term
+    if isVariable(term) :
+        ans = env.get(term.pred)
+        if not ans : return None
+        else       : return eval(ans,env)
+    args = []
+    for arg in term.args :
+        a = eval(arg,env)
+        if not a : return None
+        args.append(a)
+    return Term(term.pred, args)
 
-if __name__ == "__main__" : main ()
+if __name__ == "__main__" : main()
