@@ -110,11 +110,6 @@ number([D]) << [digit(D)]
 number([D|Rest]) << [digit(D), number(Rest)]
 print(query(number(list('12'))))
 
-#num([D|Remain], Remain) << [ number(D) ]
-#expr(L, Remain) << [num(L, Remain) ]
-#expr(L, Remain) << [ num(L, L1), 'C'(L1, '+', L2), expr(L2, Remain)]
-#expr(L, Remain) << [num(L, L1), 'C'(L1, '-', L2), expr(L2, Remain)]
-
 print("expr[")
 expr(L, A) << [num(L), eq(L, A)]
 expr(L, A) << [append(L1, [P|L2], L), plus(P), num(L1), expr(L2,B), eq(plus(L1,B), A)]
@@ -124,3 +119,19 @@ num(D) << [number(D)]
 val = query(expr(list('1+2-3'),A))
 print(query(expr(list('1+2-3'),A)))
 print("]")
+
+print("dcg[")
+predicates(['dcgexpr', 'dcgnum', 'rcons', 'dcgexprcomplete'])
+dcgexpr(L, Remain) << [dcgnum(L, Remain)]
+dcgexpr(L, Remain) << [dcgnum(L, L1), rcons(L1, '+', L2), dcgexpr(L2, Remain)]
+dcgexpr(L, Remain) << [dcgnum(L, L1), rcons(L1, '-', L2), dcgexpr(L2, Remain)]
+dcgnum([D|Remain], Remain) << [digit(D)]
+rcons([X|L], X, L) << []
+dcgexprcomplete(L) << [dcgexpr(L, list(''))]
+print(query(dcgnum(list('123'), A)))
+print(query(rcons(list('+123'), '+', L)))
+print(query(dcgexpr(list('1+2-3'), A)))
+print(query(dcgexprcomplete(list('1'), A)))
+print("]")
+
+
