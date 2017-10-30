@@ -67,7 +67,7 @@ class Symbol:
 
     def __repr__(self): return str(self)
 
-    def __or__(self, other):
+    def __pow__(self, other):
         return Cons(self, other)
 
 class Env:
