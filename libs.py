@@ -89,3 +89,38 @@ merge([A|X],[B|Y],[B|M]) << [gt(A,B),  merge([A|X],Y,M)]
 
 print(query(mergesort([4,3,6,5,9,1,7],S)))
 print("]")
+
+
+predicates(['expr', 'num', 'number', 'digit', 'plus', 'minus'])
+digit('1') << []
+digit('2') << []
+digit('3') << []
+digit('4') << []
+digit('5') << []
+digit('6') << []
+digit('7') << []
+digit('8') << []
+digit('9') << []
+digit('0') << []
+plus('+') << []
+minus('-') << []
+
+symbols(['Rest','Remain', 'L1', 'L2'])
+number([D]) << [digit(D)]
+number([D|Rest]) << [digit(D), number(Rest)]
+print(query(number(list('12'))))
+
+#num([D|Remain], Remain) << [ number(D) ]
+#expr(L, Remain) << [num(L, Remain) ]
+#expr(L, Remain) << [ num(L, L1), 'C'(L1, '+', L2), expr(L2, Remain)]
+#expr(L, Remain) << [num(L, L1), 'C'(L1, '-', L2), expr(L2, Remain)]
+
+print("expr[")
+expr(L, A) << [num(L), eq(L, A)]
+expr(L, A) << [append(L1, [P|L2], L), plus(P), num(L1), expr(L2,B), eq(plus(L1,B), A)]
+expr(L, A) << [append(L1, [P|L2], L), minus(P), num(L1), expr(L2,B), eq(minus(L1,B), A)]
+num(D) << [number(D)]
+
+val = query(expr(list('1+2-3'),A))
+print(query(expr(list('1+2-3'),A)))
+print("]")
