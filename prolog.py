@@ -10,14 +10,13 @@ class Pred:
     def __repr__(self): return str(self)
 
     def __call__(self, *args): # []
-        return Goal(self, list(args) if type(args) is tuple else [args])
+        assert type(args) is tuple
+        return Goal(self, to_list(args))
 
 class Goal:
-    def __init__(self, pred, args):
-        self.pred, self.args = pred, (args if type(args) is Cons else to_list(args))
+    def __init__(self, pred, args): self.pred, self.args = pred, args
 
-    def __lshift__(self, rhs):
-        self.pred.defs.append([self, to_list(rhs)])
+    def __lshift__(self, rhs): self.pred.defs.append([self, to_list(rhs)])
 
     def __str__(self): return "%s%s" % (str(self.pred), str(self.args))
 
@@ -32,8 +31,6 @@ class Cons:
           elif type(x.cdr) is Cons: return [str(x.car)] + lst_repr(x.cdr)
           else: return [str(x.car), '.', str(x.cdr)]
        return '(' + ' '.join(lst_repr(self)) + ')'
-
-    def empty(): return None
 
     def __repr__(self): return str(self)
 
