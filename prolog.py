@@ -138,7 +138,6 @@ def resolve(goals):
         if body is None: yield None # yield when ever no more goals remain
         else:
            goal, rest = body.car, body.cdr
-           d_env = Env()
            for d_head, d_body in goal.pred.defs:
               d_env, trail = Env(), []
               if unify(goal, env, d_head, d_env, trail, d_env):

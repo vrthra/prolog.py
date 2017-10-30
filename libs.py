@@ -77,7 +77,7 @@ split([A,B|R],[A|X],[B|Y]) << [split(R,X,Y)]
 
 merge(A,[],A) << []
 merge([],B,B) << []
-merge([A|X],[B|Y],[A|M]) << [ lteq(A,B), merge(X,[B|Y],M) ]
-merge([A|X],[B|Y],[B|M]) << [gt(A,B),  merge([A|X],Y,M) ]
+merge([A|X],[B|Y],[A|M]) << [lteq(A,B), merge(X,[B|Y],M)]
+merge([A|X],[B|Y],[B|M]) << [gt(A,B),  merge([A|X],Y,M)]
 
 print(query(mergesort([4,3,6,5,9,1,7],S)))
