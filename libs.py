@@ -3,11 +3,14 @@
 from prolog import *
 
 symbols([chr(x) for x in range(ord('A'),ord('Z')+1)])
-predicates(['eq', 'noteq', 'gt', 'write', 'writenl', 'nl'])
+predicates(['eq', 'noteq', 'gt', 'gteq', 'lt', 'lteq', 'write', 'writenl', 'nl'])
 
 eq(X, Y) << [lambda env: env.unify(env[X], env[Y])]
 noteq(X, Y) << [lambda env: env[X] != env[Y]]
 gt(X, Y) << [lambda env: env[X] > env[Y]]
+gteq(X, Y) << [lambda env: env[X] >= env[Y]]
+lt(X, Y) << [lambda env: env[X] < env[Y]]
+lteq(X, Y) << [lambda env: env[X] <= env[Y]]
 
 write(X) << [lambda env: (print(env[X], end=''),)]
 writenl(X) << [lambda env: (print(env[X]),)]
@@ -55,5 +58,26 @@ perm([],[]) << []
 subset([X|R],S) << [member(X,S), subset(R,S)]
 subset([],X) << []
 
-print(query(subset([4,3],[2,3,5,4])))
+#print(query(subset([4,3],[2,3,5,4])))
 #print(query(subset([A],[2,3,5,4])))
+#print(query(subset([A, B],[2,3,5,4])))
+
+predicates(['mergesort', 'split', 'merge'])
+mergesort([],[]) << []
+mergesort([A],[A]) << []
+mergesort([A,B|R],S) << [
+  split([A,B|R],P,T),
+  mergesort(P,Q),
+  mergesort(T,U),
+  merge(Q,U,S)]
+
+split([],[],[]) << []
+split([A],[A],[]) << []
+split([A,B|R],[A|X],[B|Y]) << [split(R,X,Y)]
+
+merge(A,[],A) << []
+merge([],B,B) << []
+merge([A|X],[B|Y],[A|M]) << [ lteq(A,B), merge(X,[B|Y],M) ]
+merge([A|X],[B|Y],[B|M]) << [gt(A,B),  merge([A|X],Y,M) ]
+
+print(query(mergesort([4,3,6,5,9,1,7],S)))

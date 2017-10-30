@@ -56,10 +56,8 @@ def is_(syms, blk):
 def to_list(x, y=None):
     for e in reversed(x):
         if type(e) is list:
-            if len(e) == 1:
+            if len(e) == 1 and type(e[0]) == Cons:
                 e = e[0]
-            elif len(e) == 0:
-                e = None
             else:
                 e = to_list(e)
         y = Cons(e, y)
