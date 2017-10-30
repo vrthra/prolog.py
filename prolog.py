@@ -130,24 +130,24 @@ def unify(x, x_env, y, y_env, trail, tmp_env):
        return all(unify(a, x_env, b, y_env, trail, tmp_env) for a,b in zip(x,y))
     return x == y
 
+def resolve_body(body, env):
+    if body is None: yield None # yield when ever no more goals remain
+    else:
+       goal, rest = body.car, body.cdr
+       for d_head, d_body in goal.pred.defs:
+          d_env, trail = Env(), []
+          if unify(goal, env, d_head, d_env, trail, d_env):
+             if d_body and callable(d_body.car):
+                 if d_body.car(CallbackEnv(d_env, trail)):
+                     yield from resolve_body(rest, env)
+             else:
+                for _i in resolve_body(d_body, d_env):
+                    yield from resolve_body(rest, env)
+          for x, x_env in trail: x_env.delete(x)
+
 def resolve(goals):
-    def _resolve_body(body, env):
-        if body is None: yield None # yield when ever no more goals remain
-        else:
-           goal, rest = body.car, body.cdr
-           for d_head, d_body in goal.pred.defs:
-              d_env, trail = Env(), []
-              if unify(goal, env, d_head, d_env, trail, d_env):
-                 if d_body and callable(d_body.car):
-                     if d_body.car(CallbackEnv(d_env, trail)):
-                         yield from _resolve_body(rest, env)
-                 else:
-                    for _i in _resolve_body(d_body, d_env):
-                        yield from _resolve_body(rest, env)
-              for x, x_env in trail: x_env.delete(x)
-              d_env.clear()
     env = Env()
-    for _ in _resolve_body(to_list(goals), env): # not an error.
+    for _ in resolve_body(to_list(goals), env): # not an error.
         yield env
 
 class CallbackEnv:
