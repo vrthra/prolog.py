@@ -55,12 +55,9 @@ def is_(syms, blk):
 
 def to_list(x, y=None):
     for e in reversed(x):
-        if type(e) is list:
-            if len(e) == 1 and type(e[0]) == Cons:
-                e = e[0]
-            else:
-                e = to_list(e)
-        y = Cons(e, y)
+        if type(e) is list: y = Cons(to_list(e), y)
+        elif type(e) is Cons: y = e
+        else: y = Cons(e, y)
     return y
 
 class Symbol:
