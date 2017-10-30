@@ -14,39 +14,46 @@ writenl(X) << [lambda env: (print(env[X]),)]
 nl() << [lambda env: (print(),)]
 
 
-predicates(['father', 'mother', 'parent', 'sibling', 'mov', 'move', 'write_info'])
+predicates(['car', 'cdr', 'cons', 'member', 'append', 'reverse', 'takeout', 'perm', 'subset'])
 
-father("matz", "Ruby") << []
-mother("Trude", "Sally") << []
-father("Tom", "Sally") << []
-father("Tom", "Erica") << []
-father("Tom", "Mini") << []
-mother("Trude", "Mini") << []
-father("Mike", "Tom") << []
+car([X|Y],X) << []
+cdr([X|Y],Y) << []
+cons(X,R,[X|R]) << []
+member(X,[X|R]) << []
+member(X,[Y|R]) << [member(X,R)]
 
-parent(X,Y) << [father(X,Y)]
-parent(X,Y) << [mother(X,Y)]
-sibling(X,Y) << [parent(Z,X), parent(Z,Y), noteq(X,Y)]
+#print(to_list([1,2,3]))
+#print(query(member(1,to_list([1,2,3]))))
+#print(query(member(3,to_list([1,2,3]))))
+#print(query(member(10,to_list([1,2,3]))))
 
 
-print(query(sibling(X, "Sally")))
+append([],X,X) << []
+#print(query(append([],[1,2],A)))
+append([X|Y],Z,[X|W]) << [append(Y,Z,W)]
+print(query(append([1,2,3],[4],B)))
+print(query(append([1,2,3],[4,5],[1,2,3,4,5])))
+print(query(append([1,2,3],W,[1,2,3,4,5])))
 
-print("no cut.")
+reverse([X|Y],Z,W) << [reverse(Y,[X|Z],W)]
+reverse([],X,X) << []
+reverse(A,R) << [reverse(A,[],R)]
 
-mov(1,X,Y,Z) << [
-    write("move top disc from "),
-    write(X),
-    write(" to "),
-    write(Y),
-    nl()
-]
+print(query(reverse([1,2,3,4,5],X)))
 
-mov(N,X,Y,Z) << [
-    gt(N, 1),
-    is_([M,N], lambda n: n - 1),
-    mov(M,X,Z,Y),
-    mov(1,X,Y,C),
-    mov(M,Z,Y,X)
-]
 
-query(mov(3,"left","right","center"))
+takeout(X,[X|R],R) << []
+takeout(X,[F|R],[F|S]) << [takeout(X,R,S)]
+
+print(query(takeout(X,[1,2,3],L)))
+
+perm([X|Y],Z) << [perm(Y,W), takeout(X,Z,W)]
+perm([],[]) << []
+
+#print(query(perm(P,[1,2])))
+
+subset([X|R],S) << [member(X,S), subset(R,S)]
+subset([],X) << []
+
+print(query(subset([4,3],[2,3,5,4])))
+#print(query(subset([A],[2,3,5,4])))

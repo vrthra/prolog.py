@@ -13,7 +13,8 @@ class Pred:
         return Goal(self, list(args) if type(args) is tuple else [args])
 
 class Goal:
-    def __init__(self, pred, args): self.pred, self.args = pred, args
+    def __init__(self, pred, args):
+        self.pred, self.args = pred, (args if type(args) is Cons else to_list(args))
 
     def __lshift__(self, rhs):
         self.pred.defs.append([self, to_list(rhs)])
@@ -31,6 +32,8 @@ class Cons:
           elif type(x.cdr) is Cons: return [str(x.car)] + lst_repr(x.cdr)
           else: return [str(x.car), '.', str(x.cdr)]
        return '(' + ' '.join(lst_repr(self)) + ')'
+
+    def empty(): return None
 
     def __repr__(self): return str(self)
 
@@ -51,7 +54,15 @@ def is_(syms, blk):
     return is_p(syms)
 
 def to_list(x, y=None):
-    for e in reversed(x): y = Cons(e, y)
+    for e in reversed(x):
+        if type(e) is list:
+            if len(e) == 1:
+                e = e[0]
+            elif len(e) == 0:
+                e = None
+            else:
+                e = to_list(e)
+        y = Cons(e, y)
     return y
 
 class Symbol:
@@ -60,6 +71,9 @@ class Symbol:
     def __str__(self): return '$' + self.name
 
     def __repr__(self): return str(self)
+
+    def __or__(self, other):
+        return Cons(self, other)
 
 class Env:
     def __init__(self): self.table = {}
@@ -110,6 +124,11 @@ def unify(x, x_env, y, y_env, trail, tmp_env):
     if type(x) is Goal and type(y) is Goal:
        if x.pred != y.pred: return False
        x, y = x.args, y.args
+    if type(x) is Cons and type(y) is Cons:
+       val = unify(x.car, x_env, y.car, y_env, trail, tmp_env)
+       if not val: return False
+       x, y = x.cdr, y.cdr
+       return unify(x, x_env, y, y_env, trail, tmp_env)
     if type(x) is list and type(y) is list:
        if len(x) != len(y): return False
 
