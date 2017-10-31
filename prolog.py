@@ -34,6 +34,10 @@ class Cons:
 
     def __repr__(self): return str(self)
 
+    def pair(self): return (self.car, self.cdr)
+
+    def __getitem__(self, i): return self.pair()[i]
+
 def counter(): yield from itertools.count()
 
 global is_cnt
@@ -103,10 +107,10 @@ def unify(x, x_env, y, y_env, trail, tmp_env):
         if type(x) is Symbol:
            xp = x_env.get(x)
            if xp is None:
-              y, y_env = y_env.dereference(y)
-              if x != y or x_env != y_env:
-                  x_env.put(x, [y, y_env])
-                  if x_env != tmp_env: trail.append([x, x_env])
+              yp = y_env.dereference(y)
+              if (x, x_env) != yp:
+                  x_env.put(x, yp)
+                  if x_env != tmp_env: trail.append((x, x_env))
               return True
            else:
               x, x_env = xp
@@ -116,16 +120,8 @@ def unify(x, x_env, y, y_env, trail, tmp_env):
     if type(x) is Goal and type(y) is Goal:
        if x.pred != y.pred: return False
        x, y = x.args, y.args
-    if type(x) is Cons and type(y) is Cons:
-       val = unify(x.car, x_env, y.car, y_env, trail, tmp_env)
-       if not val: return False
-       x, y = x.cdr, y.cdr
-       return unify(x, x_env, y, y_env, trail, tmp_env)
-    if type(x) is list and type(y) is list:
-       if len(x) != len(y): return False
-
-       return all(unify(a, x_env, b, y_env, trail, tmp_env) for a,b in zip(x,y))
-    return x == y
+    if not (type(x) is Cons and type(y) is Cons): return x == y
+    return all(unify(a, x_env, b, y_env, trail, tmp_env) for (a,b) in zip(x, y))
 
 def resolve_body(body, env):
     if body is None: yield None # yield when ever no more goals remain
