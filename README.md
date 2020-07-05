@@ -1,6 +1,6 @@
 # prolog.py
 
-A simple (and dumb) prolog DSL in Python. To execute:
+A simple (and dumb) prolog DSL in Python. To execute the examples in libs.py:
 
 ```shell
 $ python3 libs.py 
