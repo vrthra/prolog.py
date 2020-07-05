@@ -1,6 +1,6 @@
 # prolog.py
 
-A simple (and dumb) prolog DSL in Python. Translated from [tiny_prolog.rb](https://codezine.jp/article/detail/461). To execute the examples in libs.py:
+A simple (and dumb) prolog DSL in Python. The engine from [tiny_prolog.py](https://web.archive.org/web/20080615022341/http://www.okisoft.co.jp/esc/prolog/in-python.html). To execute the examples in libs.py:
 
 ```shell
 $ python3 libs.py 
