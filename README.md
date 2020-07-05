@@ -1,6 +1,6 @@
 # prolog.py
 
-A simple (and dumb) prolog DSL in Python. To execute the examples in libs.py:
+A simple (and dumb) prolog DSL in Python. Translated from [tiny_prolog.rb](https://github.com/bitcababy/ruby-prolog/blob/8abccf90e7519e53573a992ca92814ecc60c6681/lib/ruby_prolog/tiny_prolog.rb) To execute the examples in libs.py:
 
 ```shell
 $ python3 libs.py 
